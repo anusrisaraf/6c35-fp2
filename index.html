@@ -1,0 +1,1394 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Who Bears the Eviction Burden in Boston?</title>
+    <meta
+      name="description"
+      content="Interactive proof-of-concept: exploring which neighborhood factors best predict eviction filing rates in Boston."
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --bg: #0b0c0f;
+        --panel: #121420;
+        --panel-2: #0f111a;
+        --text: #f2f4f8;
+        --muted: rgba(242, 244, 248, 0.72);
+        --faint: rgba(242, 244, 248, 0.12);
+        --faint-2: rgba(242, 244, 248, 0.08);
+        --accent: #ff5a6b;
+        --accent-2: #67e8f9;
+        --good: #34d399;
+        --warn: #fbbf24;
+        --radius: 14px;
+        --shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Source Serif 4", ui-serif, Georgia, serif;
+        background: radial-gradient(1200px 600px at 20% 5%, #12142b, transparent 60%),
+          radial-gradient(1200px 600px at 70% 0%, #1a1632, transparent 55%),
+          var(--bg);
+        color: var(--text);
+        line-height: 1.55;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .skip-link {
+        position: absolute;
+        left: -999px;
+        top: 8px;
+        padding: 0.6rem 0.8rem;
+        background: var(--panel);
+        border: 1px solid var(--faint);
+        border-radius: 10px;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+      }
+      .skip-link:focus {
+        left: 12px;
+        z-index: 1000;
+      }
+
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        backdrop-filter: blur(10px);
+        background: linear-gradient(
+          to bottom,
+          rgba(11, 12, 15, 0.78),
+          rgba(11, 12, 15, 0.28)
+        );
+        border-bottom: 1px solid var(--faint-2);
+      }
+
+      .nav {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 0.9rem 1rem;
+        display: flex;
+        gap: 1rem;
+        align-items: baseline;
+        justify-content: space-between;
+      }
+
+      .brand {
+        display: grid;
+        gap: 0.15rem;
+      }
+
+      .brand .kicker {
+        font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+        font-size: 0.8rem;
+        color: var(--muted);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .brand h1 {
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+        font-weight: 700;
+        font-size: clamp(1.05rem, 2.2vw, 1.4rem);
+      }
+
+      .meta {
+        text-align: right;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      main {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 1.2rem 1rem 4rem;
+      }
+
+      .lede {
+        display: grid;
+        grid-template-columns: 1.25fr 1fr;
+        gap: 1.2rem;
+        margin-top: 1rem;
+        align-items: start;
+      }
+
+      @media (max-width: 900px) {
+        .lede {
+          grid-template-columns: 1fr;
+        }
+        .meta {
+          display: none;
+        }
+      }
+
+      .card {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 70%),
+          var(--panel);
+        border: 1px solid var(--faint-2);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+      }
+
+      /* (Intentionally minimal: keep only what the POC uses.) */
+
+      .section {
+        margin-top: 1.4rem;
+        padding: 1.1rem;
+      }
+
+      .section h3 {
+        margin: 0 0 0.65rem;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+        font-size: 1.05rem;
+      }
+
+      .section .sub {
+        margin: 0.25rem 0 0.9rem;
+        color: var(--muted);
+        font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+        font-size: 0.92rem;
+        max-width: 80ch;
+      }
+
+      .grid2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        align-items: start;
+      }
+      @media (max-width: 900px) {
+        .grid2 {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .viz {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 70%),
+          var(--panel-2);
+        border: 1px solid var(--faint-2);
+        border-radius: var(--radius);
+        padding: 0.8rem;
+      }
+
+      .viz-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 0.75rem;
+        margin-bottom: 0.6rem;
+      }
+
+      .viz-title {
+        font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+        font-weight: 700;
+        font-size: 0.95rem;
+        margin: 0;
+      }
+
+      .viz-note {
+        font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+        font-size: 0.82rem;
+        color: var(--muted);
+        margin: 0;
+      }
+
+      .controls {
+        position: sticky;
+        top: 68px;
+        z-index: 20;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem 0.85rem;
+        align-items: center;
+        margin: 0.35rem 0 0.65rem;
+        padding: 0.65rem;
+        border-radius: 12px;
+        border: 1px solid var(--faint-2);
+        background: rgba(0, 0, 0, 0.18);
+      }
+
+      .controls label {
+        font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+        font-size: 0.88rem;
+        color: rgba(242, 244, 248, 0.92);
+        display: inline-flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+
+      select,
+      button {
+        font: inherit;
+      }
+
+      select {
+        background: rgba(18, 20, 32, 0.7);
+        color: var(--text);
+        border: 1px solid var(--faint);
+        border-radius: 10px;
+        padding: 0.45rem 0.55rem;
+      }
+
+      button {
+        background: rgba(255, 90, 107, 0.12);
+        color: var(--text);
+        border: 1px solid rgba(255, 90, 107, 0.35);
+        padding: 0.45rem 0.65rem;
+        border-radius: 10px;
+        cursor: pointer;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+      }
+
+      button:hover {
+        background: rgba(255, 90, 107, 0.18);
+      }
+
+      .mode-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.45rem;
+        align-items: center;
+      }
+
+      .mode-row .mode {
+        border: 1px solid rgba(242, 244, 248, 0.14);
+        background: rgba(18, 20, 32, 0.5);
+        padding: 0.4rem 0.55rem;
+        border-radius: 999px;
+        font-size: 0.86rem;
+      }
+
+      .mode-row .mode[aria-pressed="true"] {
+        border-color: rgba(255, 90, 107, 0.45);
+        background: rgba(255, 90, 107, 0.14);
+      }
+
+      /* Removed: helper/KPI/lede styles (not used in the slim POC) */
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.75rem;
+      }
+      @media (max-width: 900px) {
+        .cards {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .policy {
+        padding: 0.9rem;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--faint-2);
+        cursor: pointer;
+        transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+        text-align: left;
+      }
+      .policy:hover {
+        transform: translateY(-2px);
+        border-color: rgba(255, 90, 107, 0.35);
+        background: rgba(255, 255, 255, 0.06);
+      }
+      .policy[aria-pressed="true"] {
+        border-color: rgba(103, 232, 249, 0.35);
+        background: rgba(103, 232, 249, 0.06);
+      }
+      .policy h4 {
+        margin: 0 0 0.4rem;
+        font-size: 0.98rem;
+      }
+      .policy p {
+        margin: 0;
+        color: rgba(242, 244, 248, 0.78);
+        font-size: 0.92rem;
+        line-height: 1.45;
+      }
+
+      /* D3 */
+      svg {
+        max-width: 100%;
+        height: auto;
+        display: block;
+      }
+
+      .axis text {
+        fill: rgba(242, 244, 248, 0.75);
+        font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+        font-size: 11px;
+      }
+
+      .axis path,
+      .axis line {
+        stroke: rgba(242, 244, 248, 0.2);
+      }
+
+      .grid line {
+        stroke: rgba(242, 244, 248, 0.12);
+      }
+
+      .tooltip {
+        position: fixed;
+        z-index: 999;
+        pointer-events: none;
+        padding: 0.55rem 0.7rem;
+        border-radius: 12px;
+        background: rgba(18, 20, 32, 0.85);
+        border: 1px solid rgba(242, 244, 248, 0.14);
+        color: rgba(242, 244, 248, 0.92);
+        box-shadow: 0 14px 42px rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(8px);
+        opacity: 0;
+        transform: translateY(4px);
+        transition: opacity 140ms ease, transform 140ms ease;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+        font-size: 0.84rem;
+      }
+      .tooltip[data-show="true"] {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .tip-title {
+        font-weight: 700;
+        margin-bottom: 0.3rem;
+      }
+
+      .tip-grid {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.2rem 0.6rem;
+      }
+
+      .tip-grid .k {
+        color: rgba(242, 244, 248, 0.72);
+      }
+
+      .callout {
+        border-left: 3px solid rgba(255, 90, 107, 0.55);
+        padding-left: 0.9rem;
+        margin: 0.8rem 0 0.2rem;
+        color: rgba(242, 244, 248, 0.9);
+      }
+
+      footer {
+        margin-top: 1.6rem;
+        padding-top: 1.2rem;
+        border-top: 1px solid var(--faint-2);
+        color: var(--muted);
+        font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif;
+        font-size: 0.9rem;
+      }
+
+      code.inline {
+        font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.92em;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 0.08rem 0.35rem;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+
+    <header>
+      <div class="nav">
+        <div class="brand">
+          <div class="kicker">FP2 · Housing Affordability</div>
+          <h1>Who Bears the Eviction Burden in Boston?</h1>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="card section" id="setup">
+        <h3>Section 1 · Setup</h3>
+        <p class="sub">
+          Two trends that often get conflated: corporate ownership rising over time, and eviction
+          filings surging post‑COVID. Hover points/bars for yearly values.
+        </p>
+        <div class="grid2">
+          <div class="viz">
+            <div class="viz-head">
+              <p class="viz-title">Corporate ownership share</p>
+              <p class="viz-note">2004–2024</p>
+            </div>
+            <div id="trend-ownership" aria-label="Corporate ownership trend"></div>
+          </div>
+          <div class="viz">
+            <div class="viz-head">
+              <p class="viz-title">Eviction filings</p>
+              <p class="viz-note">2020–2023</p>
+            </div>
+            <div id="trend-evictions" aria-label="Eviction filings trend"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card section" id="objection">
+        <h3>Section 2 · Objection</h3>
+        <p class="sub">
+          Compare predictors side‑by‑side. The correlation bars summarize strength; the scatterplots
+          show why “race vs. evictions” looks different than “corporate ownership vs. evictions.”
+        </p>
+        <div class="viz">
+          <div id="corr-bars" aria-label="Correlation bar chart"></div>
+          <div style="height: 0.75rem"></div>
+          <div id="scatter-nonwhite" aria-label="Non-white vs eviction scatterplot"></div>
+          <div style="height: 0.75rem"></div>
+          <div id="scatter-corp" aria-label="Corporate ownership vs eviction scatterplot"></div>
+        </div>
+      </section>
+
+      <section class="card section" id="analysis">
+        <h3>Section 3 · Income × race</h3>
+        <p class="sub">
+          Toggle income control to compare the “raw” relationship to an income‑controlled view. The
+          grouped bars show average eviction rates across race × income groups.
+        </p>
+        <div class="viz">
+          <div class="controls" role="group" aria-label="Income control">
+            <label>
+              Income control
+              <select id="incomeControl">
+                <option value="off">off</option>
+                <option value="on">on</option>
+              </select>
+            </label>
+            <button id="reset" type="button">Reset highlight</button>
+          </div>
+          <div class="grid2">
+            <div>
+              <div id="quadrant" aria-label="Grouped bar chart"></div>
+            </div>
+            <div>
+              <div id="partial" aria-label="Partial correlation stats"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card section" id="action">
+        <h3>Section 4 · Call to action</h3>
+        <p class="sub">Click a card to reveal the policy takeaway this evidence supports.</p>
+        <div class="cards" role="group" aria-label="Policy recommendation cards">
+          <button class="policy" type="button" aria-pressed="false" data-card="rtc">
+            <h4>1) Right to Counsel, targeted</h4>
+            <p>Prioritize outreach & funding where filing burden is highest.</p>
+          </button>
+          <button class="policy" type="button" aria-pressed="false" data-card="protections">
+            <h4>2) Tenant protections by burden</h4>
+            <p>Layer protections in majority‑minority neighborhoods where disparity persists.</p>
+          </button>
+          <button class="policy" type="button" aria-pressed="false" data-card="funding">
+            <h4>3) Stability funding</h4>
+            <p>Allocate prevention infrastructure (legal aid, emergency support) by burden.</p>
+          </button>
+        </div>
+        <p class="sub" id="policy-detail" aria-live="polite" style="margin-top: 0.75rem">
+          Click a card to show the takeaway.
+        </p>
+      </section>
+    </main>
+
+    <div class="tooltip" id="tip" role="status" aria-live="polite"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script>
+      // ---------------------------------------------
+      // Embedded sample data for the FP2 proof-of-concept.
+      // Replace this with your cleaned FP1 dataset (CSV/JSON) to go "real".
+      // Fields:
+      // - evictionRate: eviction filings per 100 renter households (illustrative)
+      // - pctNonWhite, pctBlack: demographic composition (0..1)
+      // - corpOwnership: share of units owned by corporate landlords (0..1)
+      // - medianIncome: USD (illustrative)
+      // - flipRate: property flipping rate (0..1)
+      // - incomeGroup: low/high (for quadrant placeholder)
+      // - tract: label
+      // ---------------------------------------------
+      const sampleTracts = [
+        {
+          tract: "Dorchester A",
+          evictionRate: 6.1,
+          pctNonWhite: 0.78,
+          pctBlack: 0.42,
+          corpOwnership: 0.22,
+          medianIncome: 51000,
+          flipRate: 0.08,
+          incomeGroup: "low"
+        },
+        {
+          tract: "Dorchester B",
+          evictionRate: 5.4,
+          pctNonWhite: 0.71,
+          pctBlack: 0.36,
+          corpOwnership: 0.26,
+          medianIncome: 56000,
+          flipRate: 0.06,
+          incomeGroup: "low"
+        },
+        {
+          tract: "Roxbury",
+          evictionRate: 7.2,
+          pctNonWhite: 0.86,
+          pctBlack: 0.51,
+          corpOwnership: 0.18,
+          medianIncome: 47000,
+          flipRate: 0.05,
+          incomeGroup: "low"
+        },
+        {
+          tract: "Mattapan",
+          evictionRate: 6.8,
+          pctNonWhite: 0.92,
+          pctBlack: 0.62,
+          corpOwnership: 0.14,
+          medianIncome: 49000,
+          flipRate: 0.04,
+          incomeGroup: "low"
+        },
+        {
+          tract: "South End",
+          evictionRate: 2.3,
+          pctNonWhite: 0.41,
+          pctBlack: 0.11,
+          corpOwnership: 0.35,
+          medianIncome: 98000,
+          flipRate: 0.09,
+          incomeGroup: "high"
+        },
+        {
+          tract: "Back Bay",
+          evictionRate: 1.4,
+          pctNonWhite: 0.22,
+          pctBlack: 0.04,
+          corpOwnership: 0.28,
+          medianIncome: 142000,
+          flipRate: 0.07,
+          incomeGroup: "high"
+        },
+        {
+          tract: "Allston",
+          evictionRate: 3.2,
+          pctNonWhite: 0.48,
+          pctBlack: 0.07,
+          corpOwnership: 0.31,
+          medianIncome: 83000,
+          flipRate: 0.1,
+          incomeGroup: "high"
+        },
+        {
+          tract: "Brighton",
+          evictionRate: 2.9,
+          pctNonWhite: 0.44,
+          pctBlack: 0.06,
+          corpOwnership: 0.29,
+          medianIncome: 89000,
+          flipRate: 0.08,
+          incomeGroup: "high"
+        },
+        {
+          tract: "East Boston",
+          evictionRate: 4.8,
+          pctNonWhite: 0.73,
+          pctBlack: 0.08,
+          corpOwnership: 0.2,
+          medianIncome: 67000,
+          flipRate: 0.06,
+          incomeGroup: "low"
+        },
+        {
+          tract: "Jamaica Plain",
+          evictionRate: 2.7,
+          pctNonWhite: 0.36,
+          pctBlack: 0.09,
+          corpOwnership: 0.24,
+          medianIncome: 101000,
+          flipRate: 0.05,
+          incomeGroup: "high"
+        },
+        {
+          tract: "Fenway",
+          evictionRate: 3.1,
+          pctNonWhite: 0.52,
+          pctBlack: 0.08,
+          corpOwnership: 0.33,
+          medianIncome: 91000,
+          flipRate: 0.09,
+          incomeGroup: "high"
+        },
+        {
+          tract: "Hyde Park",
+          evictionRate: 4.9,
+          pctNonWhite: 0.67,
+          pctBlack: 0.34,
+          corpOwnership: 0.16,
+          medianIncome: 72000,
+          flipRate: 0.04,
+          incomeGroup: "low"
+        }
+      ];
+
+      const predictors = [
+        { key: "pctNonWhite", label: "% non‑white residents", fmt: d3.format(".0%") },
+        { key: "pctBlack", label: "% Black residents", fmt: d3.format(".0%") },
+        { key: "corpOwnership", label: "corporate ownership share", fmt: d3.format(".0%") },
+        { key: "medianIncome", label: "median income", fmt: (d) => "$" + d3.format(",")(d) },
+        { key: "flipRate", label: "property flipping rate", fmt: d3.format(".0%") }
+      ];
+
+      const corrTargets = [
+        { key: "pctNonWhite", label: "% non‑white", color: "#ff5a6b" },
+        { key: "pctBlack", label: "% Black", color: "#fb7185" },
+        { key: "corpOwnership", label: "corp. ownership", color: "#67e8f9" },
+        { key: "medianIncome", label: "income", color: "#34d399" },
+        { key: "flipRate", label: "flipping", color: "#fbbf24" }
+      ];
+
+      const tip = document.getElementById("tip");
+      const selectIncomeControl = document.getElementById("incomeControl");
+      const resetBtn = document.getElementById("reset");
+
+      const ownershipTrend = d3.range(2004, 2025).map((year, i) => ({
+        year,
+        share: Math.max(0.04, Math.min(0.32, 0.06 + 0.0095 * i + 0.02 * Math.sin(i / 3.2)))
+      }));
+
+      const evictionFilings = [
+        { year: 2020, filings: 1900 },
+        { year: 2021, filings: 1650 },
+        { year: 2022, filings: 2850 },
+        { year: 2023, filings: 2650 }
+      ];
+
+      // --- Helpers
+      function pearsonR(xs, ys) {
+        const n = xs.length;
+        const mx = d3.mean(xs);
+        const my = d3.mean(ys);
+        let num = 0;
+        let dx = 0;
+        let dy = 0;
+        for (let i = 0; i < n; i++) {
+          const a = xs[i] - mx;
+          const b = ys[i] - my;
+          num += a * b;
+          dx += a * a;
+          dy += b * b;
+        }
+        return num / Math.sqrt(dx * dy);
+      }
+
+      // Simple "income-controlled" residualization:
+      // compute eviction residuals after linear fit on income (illustrative).
+      function residualizeByIncome(data) {
+        const xs = data.map((d) => d.medianIncome);
+        const ys = data.map((d) => d.evictionRate);
+        const mx = d3.mean(xs);
+        const my = d3.mean(ys);
+        const cov = d3.mean(xs.map((x, i) => (x - mx) * (ys[i] - my)));
+        const vx = d3.mean(xs.map((x) => (x - mx) ** 2));
+        const slope = cov / vx;
+        const intercept = my - slope * mx;
+        return data.map((d) => ({
+          ...d,
+          evictionResidual: d.evictionRate - (intercept + slope * d.medianIncome)
+        }));
+      }
+
+      let highlightedKey = null; // correlation bar highlight
+
+      // --- Correlation bars + scatterplot (core POC)
+      function computeCorrelations(data, incomeControlled) {
+        const base = incomeControlled ? residualizeByIncome(data) : data;
+        const yKey = incomeControlled ? "evictionResidual" : "evictionRate";
+        return corrTargets.map((p) => {
+          const xs = base.map((d) => d[p.key]);
+          const ys = base.map((d) => d[yKey]);
+          const r = pearsonR(xs, ys);
+          return { ...p, r };
+        });
+      }
+
+      function setTooltip(show, x, y, html) {
+        tip.dataset.show = show ? "true" : "false";
+        if (!show) return;
+        tip.style.left = `${Math.min(window.innerWidth - 280, Math.max(12, x + 12))}px`;
+        tip.style.top = `${Math.min(window.innerHeight - 120, Math.max(12, y + 12))}px`;
+        tip.innerHTML = html;
+      }
+
+      function drawOwnershipTrend(target) {
+        const w = 520;
+        const h = 220;
+        const m = { top: 16, right: 14, bottom: 34, left: 46 };
+        const iw = w - m.left - m.right;
+        const ih = h - m.top - m.bottom;
+
+        d3.select(target).selectAll("*").remove();
+        const svg = d3
+          .select(target)
+          .append("svg")
+          .attr("viewBox", `0 0 ${w} ${h}`);
+
+        const x = d3
+          .scaleLinear()
+          .domain(d3.extent(ownershipTrend, (d) => d.year))
+          .range([m.left, m.left + iw]);
+
+        const y = d3
+          .scaleLinear()
+          .domain([0, d3.max(ownershipTrend, (d) => d.share) * 1.15])
+          .nice()
+          .range([m.top + ih, m.top]);
+
+        svg
+          .append("g")
+          .attr("class", "grid")
+          .attr("transform", `translate(${m.left},0)`)
+          .call(d3.axisLeft(y).ticks(5).tickSize(-iw).tickFormat(""))
+          .call((g) => g.select(".domain").remove());
+
+        svg
+          .append("g")
+          .attr("class", "axis")
+          .attr("transform", `translate(0,${m.top + ih})`)
+          .call(d3.axisBottom(x).ticks(6).tickFormat(d3.format("d")));
+
+        svg
+          .append("g")
+          .attr("class", "axis")
+          .attr("transform", `translate(${m.left},0)`)
+          .call(d3.axisLeft(y).ticks(5).tickFormat(d3.format(".0%")));
+
+        const area = d3
+          .area()
+          .x((d) => x(d.year))
+          .y0(m.top + ih)
+          .y1((d) => y(d.share))
+          .curve(d3.curveMonotoneX);
+
+        const line = d3
+          .line()
+          .x((d) => x(d.year))
+          .y((d) => y(d.share))
+          .curve(d3.curveMonotoneX);
+
+        svg
+          .append("path")
+          .datum(ownershipTrend)
+          .attr("d", area)
+          .attr("fill", "rgba(103, 232, 249, 0.14)");
+
+        svg
+          .append("path")
+          .datum(ownershipTrend)
+          .attr("d", line)
+          .attr("fill", "none")
+          .attr("stroke", "rgba(103, 232, 249, 0.9)")
+          .attr("stroke-width", 2.2);
+
+        svg
+          .append("g")
+          .selectAll("circle")
+          .data(ownershipTrend)
+          .join("circle")
+          .attr("cx", (d) => x(d.year))
+          .attr("cy", (d) => y(d.share))
+          .attr("r", 4)
+          .attr("fill", "rgba(103, 232, 249, 0.85)")
+          .attr("fill-opacity", 0.5)
+          .on("mouseenter", (evt, d) => {
+            setTooltip(
+              true,
+              evt.clientX,
+              evt.clientY,
+              `<div class="tip-title">${d.year}</div>
+               <div class="tip-grid">
+                 <div class="k">Ownership share</div><div><b>${d3.format(".1%")(d.share)}</b></div>
+               </div>`
+            );
+            d3.select(evt.currentTarget).attr("fill-opacity", 0.95);
+          })
+          .on("mouseleave", (evt) => {
+            setTooltip(false);
+            d3.select(evt.currentTarget).attr("fill-opacity", 0.5);
+          });
+      }
+
+      function drawEvictionFilings(target) {
+        const w = 520;
+        const h = 220;
+        const m = { top: 16, right: 14, bottom: 34, left: 52 };
+        const iw = w - m.left - m.right;
+        const ih = h - m.top - m.bottom;
+
+        d3.select(target).selectAll("*").remove();
+        const svg = d3
+          .select(target)
+          .append("svg")
+          .attr("viewBox", `0 0 ${w} ${h}`);
+
+        const x = d3
+          .scaleBand()
+          .domain(evictionFilings.map((d) => d.year))
+          .range([m.left, m.left + iw])
+          .padding(0.28);
+
+        const y = d3
+          .scaleLinear()
+          .domain([0, d3.max(evictionFilings, (d) => d.filings) * 1.15])
+          .nice()
+          .range([m.top + ih, m.top]);
+
+        svg
+          .append("g")
+          .attr("class", "grid")
+          .attr("transform", `translate(${m.left},0)`)
+          .call(d3.axisLeft(y).ticks(5).tickSize(-iw).tickFormat(""))
+          .call((g) => g.select(".domain").remove());
+
+        svg
+          .append("g")
+          .attr("class", "axis")
+          .attr("transform", `translate(0,${m.top + ih})`)
+          .call(d3.axisBottom(x));
+
+        svg
+          .append("g")
+          .attr("class", "axis")
+          .attr("transform", `translate(${m.left},0)`)
+          .call(d3.axisLeft(y).ticks(5));
+
+        svg
+          .append("g")
+          .selectAll("rect")
+          .data(evictionFilings)
+          .join("rect")
+          .attr("x", (d) => x(d.year))
+          .attr("width", x.bandwidth())
+          .attr("y", (d) => y(d.filings))
+          .attr("height", (d) => m.top + ih - y(d.filings))
+          .attr("rx", 8)
+          .attr("fill", "rgba(255, 90, 107, 0.6)")
+          .on("mouseenter", (evt, d) => {
+            setTooltip(
+              true,
+              evt.clientX,
+              evt.clientY,
+              `<div class="tip-title">${d.year}</div>
+               <div class="tip-grid">
+                 <div class="k">Filings</div><div><b>${d3.format(",")(d.filings)}</b></div>
+               </div>`
+            );
+            d3.select(evt.currentTarget).attr("fill", "rgba(255, 90, 107, 0.85)");
+          })
+          .on("mouseleave", (evt) => {
+            setTooltip(false);
+            d3.select(evt.currentTarget).attr("fill", "rgba(255, 90, 107, 0.6)");
+          });
+      }
+
+      function drawCorrBars(target, rows, onPick) {
+        const w = 1040;
+        const h = 300;
+        const m = { top: 14, right: 10, bottom: 44, left: 118 };
+        const iw = w - m.left - m.right;
+        const ih = h - m.top - m.bottom;
+
+        d3.select(target).selectAll("*").remove();
+        const svg = d3
+          .select(target)
+          .append("svg")
+          .attr("viewBox", `0 0 ${w} ${h}`);
+
+        const x = d3.scaleLinear().domain([-1, 1]).range([m.left, m.left + iw]);
+
+        const y = d3
+          .scaleBand()
+          .domain(rows.map((d) => d.key))
+          .range([m.top, m.top + ih])
+          .padding(0.24);
+
+        svg
+          .append("g")
+          .attr("class", "axis")
+          .attr("transform", `translate(0,${m.top + ih})`)
+          .call(d3.axisBottom(x).ticks(5));
+
+        // 0-baseline reference line
+        svg
+          .append("line")
+          .attr("x1", x(0))
+          .attr("x2", x(0))
+          .attr("y1", m.top)
+          .attr("y2", m.top + ih)
+          .attr("stroke", "rgba(242, 244, 248, 0.22)")
+          .attr("stroke-dasharray", "4,4");
+
+        svg
+          .append("text")
+          .attr("x", m.left + iw / 2)
+          .attr("y", h - 10)
+          .attr("text-anchor", "middle")
+          .attr("fill", "rgba(242, 244, 248, 0.7)")
+          .attr("font-family", "Inter, system-ui, sans-serif")
+          .attr("font-size", 12)
+          .text("Correlation (r)");
+
+        svg
+          .append("g")
+          .attr("class", "axis")
+          .attr("transform", `translate(${m.left},0)`)
+          .call(
+            d3.axisLeft(y).tickFormat((k) => rows.find((d) => d.key === k)?.label ?? k)
+          );
+
+        const g = svg.append("g");
+
+        g.selectAll("rect")
+          .data(rows)
+          .join("rect")
+          .attr("x", (d) => (d.r < 0 ? x(d.r) : x(0)))
+          .attr("y", (d) => y(d.key))
+          .attr("height", y.bandwidth())
+          .attr("width", (d) => Math.abs(x(d.r) - x(0)))
+          .attr("rx", 8)
+          .attr("fill", (d) => d.color)
+          .attr("fill-opacity", (d) => (highlightedKey && highlightedKey !== d.key ? 0.25 : 0.8))
+          .style("cursor", "pointer")
+          .on("mouseenter", (evt, d) => {
+            setTooltip(
+              true,
+              evt.clientX,
+              evt.clientY,
+              `<div class="tip-title">${d.label}</div>
+               <div class="tip-grid">
+                 <div class="k">Correlation</div><div><b>${d3.format(".3f")(d.r)}</b></div>
+               </div>`
+            );
+          })
+          .on("mouseleave", () => setTooltip(false))
+          .on("click", (evt, d) => {
+            highlightedKey = highlightedKey === d.key ? null : d.key;
+            onPick?.(highlightedKey);
+          });
+
+        // r labels at end of bars
+        g.selectAll("text.rlabel")
+          .data(rows)
+          .join("text")
+          .attr("class", "rlabel")
+          .attr("x", (d) => (d.r < 0 ? x(d.r) - 6 : x(d.r) + 6))
+          .attr("y", (d) => y(d.key) + y.bandwidth() / 2)
+          .attr("dominant-baseline", "middle")
+          .attr("text-anchor", (d) => (d.r < 0 ? "end" : "start"))
+          .attr("fill", "rgba(242, 244, 248, 0.78)")
+          .attr("font-family", "Inter, system-ui, sans-serif")
+          .attr("font-size", 11)
+          .text((d) => d3.format("+.3f")(d.r));
+      }
+
+      function drawScatter(target, data, predictorKey, incomeControlled, opts = {}) {
+        const w = opts.width ?? 520;
+        const h = opts.height ?? 320;
+        const m = { top: 14, right: 18, bottom: 42, left: 54 };
+        const iw = w - m.left - m.right;
+        const ih = h - m.top - m.bottom;
+
+        d3.select(target).selectAll("*").remove();
+        const svg = d3
+          .select(target)
+          .append("svg")
+          .attr("viewBox", `0 0 ${w} ${h}`);
+
+        const base = incomeControlled ? residualizeByIncome(data) : data;
+        const yKey = incomeControlled ? "evictionResidual" : "evictionRate";
+
+        const x = d3
+          .scaleLinear()
+          .domain(d3.extent(base, (d) => d[predictorKey]) || [0, 1])
+          .nice()
+          .range([m.left, m.left + iw]);
+
+        const y = d3
+          .scaleLinear()
+          .domain(d3.extent(base, (d) => d[yKey]) || [0, 1])
+          .nice()
+          .range([m.top + ih, m.top]);
+
+        svg
+          .append("g")
+          .attr("class", "grid")
+          .attr("transform", `translate(${m.left},0)`)
+          .call(
+            d3
+              .axisLeft(y)
+              .ticks(6)
+              .tickSize(-iw)
+              .tickFormat("")
+          )
+          .call((g) => g.select(".domain").remove());
+
+        svg
+          .append("g")
+          .attr("class", "axis")
+          .attr("transform", `translate(0,${m.top + ih})`)
+          .call(d3.axisBottom(x).ticks(5));
+
+        svg
+          .append("g")
+          .attr("class", "axis")
+          .attr("transform", `translate(${m.left},0)`)
+          .call(d3.axisLeft(y).ticks(6));
+
+        const predictor = predictors.find((p) => p.key === predictorKey) || predictors[0];
+
+        if (opts.title) {
+          svg
+            .append("text")
+            .attr("x", m.left)
+            .attr("y", m.top - 2)
+            .attr("text-anchor", "start")
+            .attr("fill", "rgba(242, 244, 248, 0.88)")
+            .attr("font-family", "Inter, system-ui, sans-serif")
+            .attr("font-size", 12.5)
+            .attr("font-weight", 700)
+            .text(opts.title);
+        }
+
+        svg
+          .append("text")
+          .attr("x", m.left + iw / 2)
+          .attr("y", h - 10)
+          .attr("text-anchor", "middle")
+          .attr("fill", "rgba(242, 244, 248, 0.75)")
+          .attr("font-family", "Inter, system-ui, sans-serif")
+          .attr("font-size", 12)
+          .text(predictor.label);
+
+        svg
+          .append("text")
+          .attr("x", -(m.top + ih / 2))
+          .attr("y", 14)
+          .attr("transform", "rotate(-90)")
+          .attr("text-anchor", "middle")
+          .attr("fill", "rgba(242, 244, 248, 0.75)")
+          .attr("font-family", "Inter, system-ui, sans-serif")
+          .attr("font-size", 12)
+          .text(incomeControlled ? "eviction rate (income-controlled residual)" : "eviction filing rate");
+
+        const fill =
+          highlightedKey && highlightedKey !== predictorKey
+            ? "rgba(242, 244, 248, 0.22)"
+            : "rgba(255, 90, 107, 0.68)";
+
+        svg
+          .append("g")
+          .selectAll("circle")
+          .data(base)
+          .join("circle")
+          .attr("cx", (d) => x(d[predictorKey]))
+          .attr("cy", (d) => y(d[yKey]))
+          .attr("r", opts.r ?? 6.5)
+          .attr("fill", fill)
+          .attr("fill-opacity", 0.85)
+          .attr("stroke", "rgba(242, 244, 248, 0.22)")
+          .attr("stroke-width", 1)
+          .style("cursor", "default")
+          .on("mouseenter", (evt, d) => {
+            const pFmt = predictor.fmt;
+            setTooltip(
+              true,
+              evt.clientX,
+              evt.clientY,
+              `<div class="tip-title">${d.tract}</div>
+               <div class="tip-grid">
+                 <div class="k">${predictor.label}</div><div><b>${pFmt(d[predictorKey])}</b></div>
+                 <div class="k">Eviction rate</div><div><b>${d3.format(".1f")(d.evictionRate)}%</b></div>
+                 <div class="k">Corp. ownership</div><div>${d3.format(".0%")(d.corpOwnership)}</div>
+               </div>`
+            );
+            d3.select(evt.currentTarget).attr("fill", "rgba(103, 232, 249, 0.8)");
+          })
+          .on("mouseleave", (evt) => {
+            setTooltip(false);
+            d3.select(evt.currentTarget).attr("fill", fill);
+          });
+      }
+
+      function drawGroupedBars(target, data, incomeControlled) {
+        const base = incomeControlled ? residualizeByIncome(data) : data;
+        const yKey = incomeControlled ? "evictionResidual" : "evictionRate";
+        const medianIncome = d3.median(base, (d) => d.medianIncome) ?? 0;
+
+        const raceGroups = ["Low non‑white", "High non‑white"];
+        const incomeGroups = ["Low income", "High income"];
+
+        const keyFor = (d) => ({
+          raceGroup: d.pctNonWhite >= 0.5 ? "High non‑white" : "Low non‑white",
+          incomeGroup: d.medianIncome >= medianIncome ? "High income" : "Low income"
+        });
+
+        const grouped = d3.rollups(
+          base,
+          (v) => ({ mean: d3.mean(v, (d) => d[yKey]) ?? 0, n: v.length }),
+          (d) => keyFor(d).raceGroup,
+          (d) => keyFor(d).incomeGroup
+        );
+
+        const lookup = new Map();
+        for (const [raceGroup, inner] of grouped) {
+          for (const [incomeGroup, obj] of inner) {
+            lookup.set(`${raceGroup}||${incomeGroup}`, obj);
+          }
+        }
+
+        const rows = [];
+        for (const rg of raceGroups) {
+          for (const ig of incomeGroups) {
+            const obj = lookup.get(`${rg}||${ig}`) ?? { mean: 0, n: 0 };
+            rows.push({ raceGroup: rg, incomeGroup: ig, value: obj.mean, n: obj.n });
+          }
+        }
+
+        const w = 520;
+        const h = 320;
+        const m = { top: 18, right: 14, bottom: 56, left: 54 };
+        const iw = w - m.left - m.right;
+        const ih = h - m.top - m.bottom;
+
+        d3.select(target).selectAll("*").remove();
+        const svg = d3
+          .select(target)
+          .append("svg")
+          .attr("viewBox", `0 0 ${w} ${h}`);
+
+        const x = d3
+          .scaleBand()
+          .domain(rows.map((d) => `${d.raceGroup} · ${d.incomeGroup}`))
+          .range([m.left, m.left + iw])
+          .padding(0.28);
+
+        const y = d3
+          .scaleLinear()
+          .domain([
+            Math.min(0, d3.min(rows, (d) => d.value) ?? 0),
+            Math.max(0, d3.max(rows, (d) => d.value) ?? 1)
+          ])
+          .nice()
+          .range([m.top + ih, m.top]);
+
+        // 0-baseline reference line
+        svg
+          .append("line")
+          .attr("x1", m.left)
+          .attr("x2", m.left + iw)
+          .attr("y1", y(0))
+          .attr("y2", y(0))
+          .attr("stroke", "rgba(242, 244, 248, 0.22)")
+          .attr("stroke-dasharray", "4,4");
+
+        svg
+          .append("g")
+          .attr("class", "grid")
+          .attr("transform", `translate(${m.left},0)`)
+          .call(d3.axisLeft(y).ticks(5).tickSize(-iw).tickFormat(""))
+          .call((g) => g.select(".domain").remove());
+
+        svg
+          .append("g")
+          .attr("class", "axis")
+          .attr("transform", `translate(0,${m.top + ih})`)
+          .call(
+            d3.axisBottom(x).tickFormat((k) => {
+              const [raceGroup, incomeGroup] = String(k).split(" · ");
+              return raceGroup.startsWith("High") ? "High NW" : "Low NW";
+            })
+          );
+
+        // 2nd line for income group
+        svg
+          .append("g")
+          .attr("class", "axis")
+          .attr("transform", `translate(0,${m.top + ih})`)
+          .call(
+            d3.axisBottom(x).tickFormat((k) => {
+              const [, incomeGroup] = String(k).split(" · ");
+              return incomeGroup === "High income" ? "High inc" : "Low inc";
+            })
+          )
+          .call((g) => g.selectAll("text").attr("dy", "1.9em").attr("fill", "rgba(242, 244, 248, 0.62)"))
+          .call((g) => g.select(".domain").attr("opacity", 0));
+
+        svg
+          .append("g")
+          .attr("class", "axis")
+          .attr("transform", `translate(${m.left},0)`)
+          .call(d3.axisLeft(y).ticks(5));
+
+        svg
+          .append("text")
+          .attr("x", m.left + iw / 2)
+          .attr("y", h - 8)
+          .attr("text-anchor", "middle")
+          .attr("fill", "rgba(242, 244, 248, 0.7)")
+          .attr("font-family", "Inter, system-ui, sans-serif")
+          .attr("font-size", 12)
+          .text("Race × income group");
+
+        svg
+          .append("g")
+          .selectAll("rect")
+          .data(rows)
+          .join("rect")
+          .attr("x", (d) => x(`${d.raceGroup} · ${d.incomeGroup}`))
+          .attr("width", x.bandwidth())
+          .attr("y", (d) => (d.value >= 0 ? y(d.value) : y(0)))
+          .attr("height", (d) => Math.abs(y(d.value) - y(0)))
+          .attr("rx", 8)
+          .attr("fill", (d) =>
+            d.raceGroup.startsWith("High") ? "rgba(255, 90, 107, 0.55)" : "rgba(103, 232, 249, 0.45)"
+          )
+          .on("mouseenter", (evt, d) => {
+            setTooltip(
+              true,
+              evt.clientX,
+              evt.clientY,
+              `<div class="tip-title">${d.raceGroup} · ${d.incomeGroup}</div>
+               <div class="tip-grid">
+                 <div class="k">Avg</div><div><b>${d3.format(".2f")(d.value)}${incomeControlled ? "" : "%"}</b></div>
+                 <div class="k">Tracts</div><div><b>${d.n}</b></div>
+               </div>`
+            );
+          })
+          .on("mouseleave", () => setTooltip(false));
+      }
+
+      function drawPartialStats(target, data, incomeControlled) {
+        const corrsRaw = computeCorrelations(data, false);
+        const corrsCtl = computeCorrelations(data, true);
+
+        const pctNonWhite = (incomeControlled ? corrsCtl : corrsRaw).find((d) => d.key === "pctNonWhite")?.r ?? 0;
+        const corp = (incomeControlled ? corrsCtl : corrsRaw).find((d) => d.key === "corpOwnership")?.r ?? 0;
+
+        d3.select(target).selectAll("*").remove();
+        const wrap = d3.select(target).append("div");
+        wrap
+          .style("font-family", "Inter, system-ui, sans-serif")
+          .style("color", "rgba(242,244,248,.9)")
+          .style("line-height", "1.45");
+
+        wrap
+          .append("div")
+          .style("font-weight", "700")
+          .style("margin-bottom", "0.4rem")
+          .text(incomeControlled ? "Income‑controlled correlations" : "Raw correlations");
+
+        const list = wrap.append("div").style("display", "grid").style("gap", "0.55rem");
+
+        [
+          ["% non‑white", pctNonWhite],
+          ["Corporate ownership", corp]
+        ].forEach(([label, r]) => {
+          const row = list
+            .append("div")
+            .style("padding", "0.65rem 0.75rem")
+            .style("border", "1px solid rgba(242,244,248,.12)")
+            .style("border-radius", "12px")
+            .style("background", "rgba(0,0,0,.18)");
+          row.append("div").style("color", "rgba(242,244,248,.75)").style("font-size", "0.86rem").text(label);
+          row
+            .append("div")
+            .style("font-weight", "800")
+            .style("font-size", "1.1rem")
+            .text(`r = ${d3.format(".3f")(r)}`);
+        });
+      }
+
+      function render() {
+        const incomeControlled = selectIncomeControl.value === "on";
+
+        const corrs = computeCorrelations(sampleTracts, incomeControlled);
+
+        drawCorrBars("#corr-bars", corrs, () => render());
+
+        drawOwnershipTrend("#trend-ownership");
+        drawEvictionFilings("#trend-evictions");
+
+        drawScatter("#scatter-nonwhite", sampleTracts, "pctNonWhite", false, {
+          width: 1040,
+          height: 320,
+          r: 6,
+          title: "% non‑white vs eviction filing rate"
+        });
+        drawScatter("#scatter-corp", sampleTracts, "corpOwnership", false, {
+          width: 1040,
+          height: 320,
+          r: 6,
+          title: "Corporate ownership vs eviction filing rate"
+        });
+
+        drawGroupedBars("#quadrant", sampleTracts, incomeControlled);
+        drawPartialStats("#partial", sampleTracts, incomeControlled);
+      }
+
+      selectIncomeControl.addEventListener("change", () => {
+        highlightedKey = null;
+        render();
+      });
+
+      resetBtn.addEventListener("click", () => {
+        highlightedKey = null;
+        render();
+      });
+
+      // Policy cards
+      const policyDetail = document.getElementById("policy-detail");
+      document.querySelectorAll(".policy").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const pressed = btn.getAttribute("aria-pressed") === "true";
+          document.querySelectorAll(".policy").forEach((b) => b.setAttribute("aria-pressed", "false"));
+          btn.setAttribute("aria-pressed", pressed ? "false" : "true");
+
+          if (pressed) {
+            policyDetail.textContent = "Click a card to show the takeaway.";
+            return;
+          }
+
+          const which = btn.dataset.card;
+          policyDetail.textContent =
+            which === "rtc"
+              ? "Right to Counsel is most effective when targeted to neighborhoods with the highest filing burden—not only where corporate landlords are concentrated."
+              : which === "protections"
+                ? "Tenant protections focused only on landlord type miss persistent racial disparities. Target protections by burden and neighborhood context."
+                : "Housing stability funding can act as prevention infrastructure. Allocate legal aid and emergency support where eviction burden is structurally highest.";
+        });
+      });
+
+      render();
+    </script>
+  </body>
+</html>
