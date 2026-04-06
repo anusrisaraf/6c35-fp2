@@ -1,0 +1,26 @@
+# SvelteKit generated files
+D3_implementation/.svelte-kit/
+
+# Dependencies
+D3_implementation/node_modules/
+
+# Build output
+D3_implementation/build/
+D3_implementation/dist/
+
+# Environment files — never commit secrets
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln

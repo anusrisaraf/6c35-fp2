@@ -1,0 +1,3 @@
+/* static/style.css — intentionally minimal; most styles live in +layout.svelte */
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; }
