@@ -51,12 +51,19 @@ export const PREDICTORS = [
 ];
 
 /** Correlation bar metadata */
+// export const CORR_TARGETS = [
+//   { key: 'pctNonWhite',   label: '% non‑white',    color: '#ff5a6b' },
+//   { key: 'pctBlack',      label: '% Black',         color: '#fb7185' },
+//   { key: 'corpOwnership', label: 'corp. ownership', color: '#67e8f9' },
+//   { key: 'medianIncome',  label: 'income',          color: '#34d399' },
+//   { key: 'flipRate',      label: 'flipping',        color: '#fbbf24' }
+// ];
 export const CORR_TARGETS = [
-  { key: 'pctNonWhite',   label: '% non‑white',    color: '#ff5a6b' },
-  { key: 'pctBlack',      label: '% Black',         color: '#fb7185' },
-  { key: 'corpOwnership', label: 'corp. ownership', color: '#67e8f9' },
-  { key: 'medianIncome',  label: 'income',          color: '#34d399' },
-  { key: 'flipRate',      label: 'flipping',        color: '#fbbf24' }
+  { key: 'pctNonWhite',   label: '% non‑white',     color: '#3b0d0c' }, // Deep Burgundy
+  { key: 'pctBlack',      label: '% Black',         color: '#bcbab0' }, // Warm Grey
+  { key: 'corpOwnership', label: 'corp. ownership', color: '#0e8a8d' }, // Teal
+  { key: 'medianIncome',  label: 'income',          color: '#bcac88' }, // Tan/Gold
+  { key: 'flipRate',      label: 'flipping',        color: '#d2d7dd' }  // Silver
 ];
 
 /** Policy card content */
