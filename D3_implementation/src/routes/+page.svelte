@@ -1,8 +1,6 @@
-<!-- src/routes/+page.svelte -->
 <script>
   import { computeCorrelations } from '$lib/utils/stats.js';
   import { tracts, CORR_TARGETS } from '$lib/data/tracts.js';
-
   import OwnershipTrend  from '$lib/components/OwnershipTrend.svelte';
   import EvictionFilings from '$lib/components/EvictionFilings.svelte';
   import CorrBars        from '$lib/components/CorrBars.svelte';
@@ -16,7 +14,11 @@
   /** @type {string | null} */
   let highlightKey = null;
 
-  $: correlations = computeCorrelations(tracts, CORR_TARGETS, incomeControlled);
+  /** NEW: Track selected neighborhood IDs */
+  let selectedTracts = [];
+
+  // Re-calculate correlations whenever income control OR selection changes
+  $: correlations = computeCorrelations(tracts, CORR_TARGETS, incomeControlled, selectedTracts);
 
   function handleHighlight(/** @type {string | null} */ key) {
     highlightKey = key;
@@ -24,6 +26,15 @@
 
   function resetHighlight() {
     highlightKey = null;
+  }
+
+  /** NEW: Toggle a tract ID in the selection array */
+  function toggleTract(id) {
+    if (selectedTracts.includes(id)) {
+      selectedTracts = selectedTracts.filter(t => t !== id);
+    } else {
+      selectedTracts = [...selectedTracts, id];
+    }
   }
 </script>
 
@@ -46,7 +57,6 @@
 
 <main id="main">
 
-  <!-- ─── Section 1: Setup ─────────────────────────────────────────── -->
   <section class="card section" id="setup">
     <div class="section-header">
       <span class="section-number">01</span>
@@ -78,16 +88,14 @@
     </div>
   </section>
 
-  <!-- ─── Section 2: Objection ─────────────────────────────────────── -->
   <section class="card section" id="objection">
     <div class="section-header">
       <span class="section-number">02</span>
       <div>
         <h2>Objection</h2>
         <p class="sub">
-          Compare predictors side‑by‑side. Click a bar to highlight it across scatterplots.
-          The correlation bars summarize strength; the scatterplots show why
-          "race vs. evictions" looks different than "corporate ownership vs. evictions."
+          Compare predictors side‑by‑side. Click a bar to highlight it across scatterplots. 
+          <strong>Click dots on the scatterplots to filter the correlation analysis to specific neighborhoods.</strong>
         </p>
       </div>
     </div>
@@ -99,6 +107,13 @@
         onHighlight={handleHighlight}
       />
 
+      {#if selectedTracts.length > 0}
+        <div class="selection-control">
+          <span>Filtering by {selectedTracts.length} selected neighborhoods</span>
+          <button on:click={() => selectedTracts = []}>Clear filter</button>
+        </div>
+      {/if}
+
       <div class="spacer" />
 
       <Scatter
@@ -106,6 +121,8 @@
         predictorKey="pctNonWhite"
         {incomeControlled}
         {highlightKey}
+        {selectedTracts}
+        onToggleTract={toggleTract}
         width={1040}
         height={320}
         title="Non‑white share vs eviction filing rate"
@@ -118,6 +135,8 @@
         predictorKey="corpOwnership"
         {incomeControlled}
         {highlightKey}
+        {selectedTracts}
+        onToggleTract={toggleTract}
         width={1040}
         height={320}
         title="Corporate ownership vs eviction filing rate"
@@ -125,7 +144,6 @@
     </div>
   </section>
 
-  <!-- ─── Section 3: Income × race ─────────────────────────────────── -->
   <section class="card section" id="analysis">
     <div class="section-header">
       <span class="section-number">03</span>
@@ -157,7 +175,6 @@
     </div>
   </section>
 
-  <!-- ─── Section 4: Call to action ────────────────────────────────── -->
   <section class="card section" id="action">
     <div class="section-header">
       <span class="section-number">04</span>
@@ -181,6 +198,29 @@
 </main>
 
 <style>
+  .selection-control {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(103, 232, 249, 0.1);
+    border: 1px solid rgba(103, 232, 249, 0.3);
+    border-radius: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: #67e8f9;
+  }
+  .selection-control button {
+    background: #67e8f9;
+    color: #0b0c0f;
+    border: none;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 700;
+  }
+
   .skip-link {
     position: absolute;
     left: -999px;

@@ -1,4 +1,3 @@
-<!-- src/lib/components/Scatter.svelte -->
 <script>
   import { onMount } from 'svelte';
   import * as d3 from 'd3';
@@ -8,15 +7,17 @@
 
   /** @type {import('../data/tracts.js').Tract[]} */
   export let data = [];
-
   /** Which predictor key to plot on x-axis */
   export let predictorKey = 'pctNonWhite';
-
   /** Whether to use income-controlled residuals on y */
   export let incomeControlled = false;
-
   /** Dim dots to grey when a different predictor is highlighted */
   export let highlightKey = null;
+
+  /** NEW: Array of selected tract IDs */
+  export let selectedTracts = [];
+  /** NEW: Callback for toggling selection */
+  export let onToggleTract = (/** @type {string} */ id) => {};
 
   export let title = '';
   export let width  = 520;
@@ -28,10 +29,11 @@
   const M = { top: 24, right: 18, bottom: 44, left: 58 };
 
   onMount(() => draw());
-  $: data, predictorKey, incomeControlled, highlightKey, svgEl && draw();
+  $: data, predictorKey, incomeControlled, highlightKey, selectedTracts, svgEl && draw();
 
   function draw() {
     if (!svgEl) return;
+
     const IW = width - M.left - M.right;
     const IH = height - M.top - M.bottom;
 
@@ -92,18 +94,21 @@
       .attr('font-family', 'DM Mono, monospace').attr('font-size', 11)
       .text(incomeControlled ? 'eviction residual (income-controlled)' : 'eviction filing rate (%)');
 
-    // Dots
-    const dotFill = dimmed ? 'rgba(242,244,248,0.18)' : 'rgba(255, 90, 107, 0.68)';
+    // Dots logic updated for selection
+    const defaultFill = dimmed ? 'rgba(242,244,248,0.18)' : 'rgba(255, 90, 107, 0.68)';
+    const selectedFill = '#67e8f9';
 
     svg.append('g').selectAll('circle')
       .data(base)
       .join('circle')
       .attr('cx', (d) => x(d[predictorKey]))
       .attr('cy', (d) => y(d[yKey]))
-      .attr('r', 6.5)
-      .attr('fill', dotFill)
+      .attr('r', (d) => selectedTracts.includes(d.tract) ? 9 : 6.5)
+      .attr('fill', (d) => selectedTracts.includes(d.tract) ? selectedFill : defaultFill)
       .attr('fill-opacity', 0.85)
-      .attr('stroke', 'rgba(242,244,248,0.2)').attr('stroke-width', 1)
+      .attr('stroke', (d) => selectedTracts.includes(d.tract) ? '#fff' : 'rgba(242,244,248,0.2)')
+      .attr('stroke-width', (d) => selectedTracts.includes(d.tract) ? 2 : 1)
+      .style('cursor', 'pointer')
       .on('mouseenter', (evt, d) => {
         showTooltip(evt.clientX, evt.clientY,
           `<div class="tip-title">${d.tract}</div>
@@ -113,13 +118,18 @@
              <div class="k">Corp. ownership</div><div>${(d.corpOwnership * 100).toFixed(0)}%</div>
            </div>`
         );
-        d3.select(evt.currentTarget)
-          .attr('fill', 'rgba(103,232,249,0.85)')
-          .attr('r', 8);
+        d3.select(evt.currentTarget).attr('r', 10);
       })
-      .on('mouseleave', (evt) => {
+      .on('mouseleave', (evt, d) => {
         hideTooltip();
-        d3.select(evt.currentTarget).attr('fill', dotFill).attr('r', 6.5);
+        // Return to selection size or default size
+        const isSelected = selectedTracts.includes(d.tract);
+        d3.select(evt.currentTarget)
+          .attr('r', isSelected ? 9 : 6.5)
+          .attr('fill', isSelected ? selectedFill : defaultFill);
+      })
+      .on('click', (evt, d) => {
+        onToggleTract(d.tract);
       });
   }
 </script>

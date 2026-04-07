@@ -49,13 +49,22 @@ export function residualizeByIncome(data) {
  * @param {import('../data/tracts.js').Tract[]} data
  * @param {import('../data/tracts.js').CORR_TARGETS} targets
  * @param {boolean} incomeControlled
+ * @param {string[]} [selectedTractIds] - Optional array of tract IDs to filter by
  */
-export function computeCorrelations(data, targets, incomeControlled) {
-  const base  = incomeControlled ? residualizeByIncome(data) : data;
+export function computeCorrelations(data, targets, incomeControlled, selectedTractIds = []) {
+  // Filter data first if a selection exists
+  const filteredData = selectedTractIds.length > 0 
+    ? data.filter(d => selectedTractIds.includes(d.tract)) 
+    : data;
+
+  const base  = incomeControlled ? residualizeByIncome(filteredData) : filteredData;
   const yKey  = incomeControlled ? 'evictionResidual' : 'evictionRate';
+  
   return targets.map((p) => {
     const xs = base.map((d) => d[p.key]);
     const ys = base.map((d) => d[yKey]);
-    return { ...p, r: pearsonR(xs, ys) };
+    // Handle cases with too few points for correlation
+    const r = xs.length > 1 ? pearsonR(xs, ys) : 0;
+    return { ...p, r };
   });
 }
