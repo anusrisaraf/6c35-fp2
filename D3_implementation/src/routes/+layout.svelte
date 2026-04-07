@@ -15,7 +15,7 @@
 <slot />
 <Tooltip />
 
-<style>
+<!-- <style>
   :global(*) { box-sizing: border-box; }
 
   :global(:root) {
@@ -61,5 +61,66 @@
   }
   :global(.grid line) {
     stroke: rgba(242, 244, 248, 0.1);
+  }
+</style> -->
+
+<style>
+  :global(*) { box-sizing: border-box; }
+
+  :global(:root) {
+    /* Base background from the very dark bars */
+    --bg:       #111111; 
+    --panel:    #1a1515; /* Tinted by the burgundy bar */
+    --panel-2:  #0d0d0d;
+    
+    /* Main Text: Using the off-white/cream from the bottom bar */
+    --text:     #f1f0e8; 
+    --muted:    rgba(241, 240, 232, 0.65);
+    --faint:    rgba(241, 240, 232, 0.1);
+    --faint-2:  rgba(241, 240, 232, 0.05);
+
+    /* --- Primary Theme Palette (Top Bar) --- */
+    --burgundy: #3b0d0c; /* Deep burgundy */
+    --silver:   #d2d7dd; /* Light blue-grey */
+    --warm-grey:#bcbab0; /* Muted stone grey */
+
+    /* --- Accent Palette (Bottom Bar) --- */
+    --accent:   #0e8a8d; /* The Teal bar */
+    --accent-2: #bcac88; /* The Tan/Gold bar */
+    
+    /* Semantic mapping */
+    --good:     #0e8a8d; 
+    --warn:     #3b0d0c;
+    --radius:   14px;
+    --shadow:   0 18px 50px rgba(0, 0, 0, 0.6);
+  }
+
+  :global(body) {
+    margin: 0;
+    font-family: 'DM Serif Display', ui-serif, Georgia, serif;
+    /* Cleaned up the background to favor the "solemn" neutral look */
+    background: 
+      radial-gradient(circle at 20% 20%, #221a1a 0%, transparent 40%),
+      var(--bg);
+    color: var(--text);
+    line-height: 1.55;
+  }
+
+  :global(a)      { color: var(--accent); text-decoration-color: var(--faint); }
+  :global(button) { font: inherit; }
+  :global(select) { font: inherit; }
+
+  /* D3 axis styles — matching the warm-grey/silver tones */
+  :global(.axis text) {
+    fill: var(--warm-grey);
+    font-family: 'DM Mono', ui-monospace, monospace;
+    font-size: 11px;
+  }
+  :global(.axis path),
+  :global(.axis line) {
+    stroke: var(--faint);
+  }
+  :global(.grid line) {
+    stroke: var(--faint-2);
   }
 </style>
